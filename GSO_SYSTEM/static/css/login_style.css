@@ -1,0 +1,151 @@
+body {
+    background: url("../images/login_bg.png") no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
+  .login-container {
+    background-color: rgba(240, 240, 240, 0.6); /* transparent */
+    backdrop-filter: blur(10px); /* blur background behind it */
+ 
+    border-radius: 10px;
+    padding: 30px 25px;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    max-width: 320px;
+    width: 100%;
+}
+
+
+  .login-container img {
+    width: 100px;
+    height: auto;
+  }
+
+  .login-container h2 {
+    margin: 15px 0 5px;
+    color: #003366;
+    font-size: 25px;
+  }
+
+  .login-container p {
+    margin: 5px 0 20px;
+    color: #ffffff;
+  }
+
+  .login-container input[type="text"],
+  .login-container input[type="password"] {
+    width: 90%;
+    padding: 10px;
+    margin: 8px auto;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    display: block;
+  }
+
+  .options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    margin: 10px 0;
+  }
+
+  .options label {
+    display: flex;
+    align-items: center;
+  }
+
+  .options input[type="checkbox"] {
+    margin-right: 5px;
+  }
+
+  .options a {
+    text-decoration: none;
+    color: #003366;
+  }
+
+  .login-container button {
+    width: 50%;
+    background-color: #003366;
+    color: #fff;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    margin-top: 10px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  .login-container button:hover {
+    background-color: #002244;
+  }
+
+  .error-msg {
+    color: red;
+    margin-top: 10px;
+    font-size: 14px;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 400px) {
+    .login-container {
+      padding: 20px 15px;
+      max-width: 95%;
+    }
+
+    .login-container h2 {
+      font-size: 20px;
+    }
+
+    .login-container p {
+      font-size: 14px;
+    }
+
+    .login-container button {
+      width: 100%;
+    }
+
+    .options {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .options a {
+      margin-top: 5px;
+    }
+  }
+
+
+  .password-container {
+    position: relative;
+    width: 100%;
+}
+
+.password-container img {
+  width: 20px;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+
+.password-container input {
+    width: 100%;
+    padding-right: 40px; /* space for eye icon */
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    font-size: 18px;
+    color: #666;
+}

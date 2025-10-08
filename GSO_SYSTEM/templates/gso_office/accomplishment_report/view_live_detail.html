@@ -1,0 +1,38 @@
+{% extends "gso_office/gso_base_dashboard.html" %}
+
+{% block title %}Request Details{% endblock %}
+
+{% block main_content %}
+<div class="card p-4 shadow-sm mt-3">
+    <h3 class="mb-3">
+        {% if is_migrated %}
+            Migrated Report Details
+        {% else %}
+            Live Service Request Details
+        {% endif %}
+    </h3>
+
+    <p><strong>Date:</strong> {{ request_item.created_at|default:report_item.date_started|date:"Y-m-d" }}</p>
+    <p><strong>Unit:</strong> {{ request_item.unit|default:report_item.unit|title }}</p>
+    <p><strong>Description:</strong> {{ request_item.description|default:report_item.description }}</p>
+    <p><strong>Requesting Office:</strong> {{ request_item.requesting_office|default:report_item.office_name }}</p>
+
+    {% if not is_migrated %}
+        <p><strong>Status:</strong> {{ request_item.status }}</p>
+        <p><strong>Assigned Personnel:</strong> 
+            {% for p in request_item.personnel.all %}
+                {{ p.full_name }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+                <em>No personnel assigned</em>
+            {% endfor %}
+        </p>
+    {% else %}
+        <p><strong>Assigned Personnel:</strong> {{ report_item.assigned_personnel|default:"(None)" }}</p>
+        <p><strong>Rating:</strong> {{ report_item.rating|default:"Not Rated" }}</p>
+    {% endif %}
+
+    <a href="{% url 'gso_reports:accomplishment_report' %}" class="btn btn-secondary mt-3">
+        ← Back to Reports
+    </a>
+</div>
+{% endblock %}

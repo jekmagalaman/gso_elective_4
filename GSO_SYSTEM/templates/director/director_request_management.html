@@ -1,0 +1,176 @@
+{% extends "gso_office/gso_base_dashboard.html" %}
+
+{% block title %}Director Request Management{% endblock %}
+
+{% block main_content %}
+<div class="header d-flex align-items-center justify-content-between mb-3">
+    <h1 class="page-title">REQUEST MANAGEMENT</h1>
+
+    <form method="get" class="d-flex gap-2 align-items-center">
+        <!-- Search -->
+        <input 
+              type="text" 
+              name="q" 
+              class="form-control form-control-sm" 
+              placeholder="Search requests..." 
+              value="{{ request.GET.q|default:'' }}"
+          >
+
+        <!-- Unit Filter -->
+        <select name="unit" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All Units</option>
+            {% for unit in units %}
+                <option value="{{ unit.id }}" {% if unit_filter|stringformat:"s" == unit.id|stringformat:"s" %}selected{% endif %}>
+                    {{ unit.name|title }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+
+<div class="table-container table-responsive">
+    <table class="table table-hover align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>REQUEST ID</th>
+                <th>DATE</th>
+                <th>REQUESTING OFFICE</th>
+                <th>UNIT</th>
+                <th>ASSIGNED PERSONNEL</th>
+                <th>STATUS</th>
+                <th>ACTIONS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr>
+                <td>{{ req.id }}</td>
+                <td>{{ req.created_at|date:"Y-m-d" }}</td>
+                <td>{{ req.requestor.department }}</td>
+                <td>{{ req.unit.name }}</td>
+                <td>{{ req.assigned_personnel_names|default:"Unassigned" }}</td>
+                <td>
+                    <span class="status-badge status-{{ req.status|lower|slugify }}">{{ req.status }}</span>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-primary"
+                        onclick="openModal(
+                        '{{ req.id }}',
+                        '{{ req.created_at|date:"Y-m-d" }}',
+                        '{{ req.custom_full_name|default:req.requestor.username|escapejs }}',
+                        '{{ req.requestor.department|escapejs }}',
+                        '{{ req.unit.name|escapejs }}',
+                        `{{ req.description|escapejs }}`,
+                        '{{ req.status|escapejs }}',
+                        `{{ req.assigned_personnel_names|escapejs }}`,
+                        `{% for rm in req.requestmaterial_set.all %}{{ rm.material.name|escapejs }} ({{ rm.quantity }} {{ rm.material.unit|escapejs }}){% if not forloop.last %}, {% endif %}{% endfor %}`,
+                        `{% for r in req.reports.all %}<strong>{{ r.personnel.get_full_name|escapejs }}</strong> ({{ r.created_at|date:"Y-m-d H:i" }}): {{ r.report_text|escapejs }}<br>{% endfor %}`
+                        )">
+                        View
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center text-muted">No requests found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="requestModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa fa-file-alt"></i> Request Details</h2>
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="details-grid">
+                <div class="detail-item">
+                    <label>Date:</label><span id="modal-date"></span>
+                </div>
+                <div class="detail-item">
+                    <label>Requesting Office:</label><span id="modal-office"></span>
+                </div>
+                <div class="detail-item">
+                    <label>Requestor Name:</label><span id="modal-requestor"></span>
+                </div>
+                <div class="detail-item">
+                    <label>Unit:</label><span id="modal-unit"></span>
+                </div>
+                <div class="detail-item description-box">
+                    <label>Description:</label><p id="modal-description"></p>
+                </div>
+                <div class="detail-item">
+                    <label>Assigned Personnel:</label><span id="modal-personnel"></span>
+                </div>
+                <div class="detail-item description-box">
+                    <label>Materials:</label><p id="modal-materials"></p>
+                </div>
+                <div class="detail-item">
+                    <label>Status:</label><span id="modal-status"></span>
+                </div>
+                <div class="detail-item description-box">
+                    <label>Personnel Reports:</label><div id="modal-reports"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <form id="approveForm" method="POST" action="">
+                {% csrf_token %}
+                <button type="submit" class="approve-btn">Approve</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.modal { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; z-index:999; padding:10px; }
+.modal-content { background:#fff; border-radius:12px; width:720px; max-width:100%; box-shadow:0 8px 25px rgba(0,0,0,0.25); display:flex; flex-direction:column; animation: slideDown 0.3s ease; }
+@keyframes slideDown { from{transform:translateY(-20px); opacity:0} to{transform:translateY(0); opacity:1} }
+.modal-header { background:#0d47a1; color:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; }
+.modal-header h2 { margin:0; font-size:1.3rem; display:flex; align-items:center; gap:8px; }
+.close-btn { cursor:pointer; font-size:24px; color:#fff; transition:0.2s; }
+.close-btn:hover { color:#ff6b6b; }
+.modal-body { padding:20px; font-size:14px; color:#1f2937; }
+.details-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px 24px; }
+.detail-item { display:flex; flex-direction:column; }
+.detail-item label { font-size:12px; color:#6b7280; text-transform:uppercase; font-weight:bold; margin-bottom:3px; }
+.detail-item span, .detail-item p { font-size:14px; color:#111827; }
+.description-box { grid-column: span 2; }
+.description-box p { background:#f9fafb; padding:10px; border-radius:6px; border:1px solid #e5e7eb; }
+.modal-footer { padding:14px 20px; text-align:right; background:#f9fafb; }
+.approve-btn { background:#22c55e; color:white; border:none; padding:10px 22px; border-radius:6px; font-size:14px; cursor:pointer; font-weight:500; transition:0.2s; }
+.approve-btn:hover { background:#16a34a; }
+@media (max-width:768px) { .details-grid { grid-template-columns:1fr; } .modal-content { width:95%; } }
+</style>
+
+<script>
+function openModal(id, date, requestor, office, unit, description, status, personnel, materials, reports) {
+    document.getElementById("modal-date").textContent = date;
+    document.getElementById("modal-requestor").textContent = requestor;
+    document.getElementById("modal-office").textContent = office;
+    document.getElementById("modal-unit").textContent = unit;
+    document.getElementById("modal-description").textContent = description;
+    document.getElementById("modal-status").textContent = status;
+    document.getElementById("modal-personnel").textContent = personnel || "Unassigned";
+    document.getElementById("modal-materials").textContent = materials || "No materials assigned";
+    document.getElementById("modal-reports").innerHTML = reports || "No reports submitted";
+
+    const approveForm = document.getElementById("approveForm");
+    approveForm.action = "{% url 'gso_requests:approve_request' 0 %}".replace("0", id);
+
+    // Show approve button only if pending and personnel assigned
+    approveForm.style.display = (status === "Pending" && personnel && personnel.trim() !== "") ? "block" : "none";
+
+    document.getElementById("requestModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("requestModal").style.display = "none";
+}
+</script>
+{% endblock %}

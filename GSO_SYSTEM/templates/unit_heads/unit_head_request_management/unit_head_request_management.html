@@ -1,0 +1,82 @@
+{% extends "unit_heads/unit_head_base_dashboard.html" %}
+
+{% block title %}Request Management{% endblock %}
+
+{% block main_content %}
+<div class="header d-flex align-items-center justify-content-between mb-3">
+  <h1 class="page-title">REQUEST MANAGEMENT</h1>
+
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <!-- Search -->
+    <input 
+      type="text" 
+      name="q" 
+      class="form-control form-control-sm" 
+      placeholder="Search by requestor..." 
+      value="{{ request.GET.q }}"
+    >
+    <!-- Status Filter -->
+    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+      <option value="">All Status</option>
+      <option value="Pending" {% if request.GET.status == 'Pending' %}selected{% endif %}>Pending</option>
+      <option value="Approved" {% if request.GET.status == 'Approved' %}selected{% endif %}>Approved</option>
+      <option value="In Progress" {% if request.GET.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+      <option value="Done for Review" {% if request.GET.status == 'Done for Review' %}selected{% endif %}>Done for Review</option>
+      <option value="Completed" {% if request.GET.status == 'Completed' %}selected{% endif %}>Completed</option>
+      <option value="Cancelled" {% if request.GET.status == 'Cancelled' %}selected{% endif %}>Cancelled</option>
+    </select>
+  </form>
+</div>
+
+<div class="table-container table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>REQUEST ID</th>
+                <th>REQUESTOR</th>
+                <th>REQUEST TYPE</th>
+                <th>DATE SUBMITTED</th>
+                <th>STATUS</th>
+                <th>ASSIGNED PERSONNEL</th>
+                <th>ACTIONS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr>
+                <td>{{ req.id }}</td>
+                <td>{{ req.requestor.department }}</td>
+                <td>{{ req.unit }}</td>
+                <td>{{ req.created_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                  {% if req.status == "Pending" %}<span class="status-badge status-pending">● Pending</span>
+                  {% elif req.status == "Approved" %}<span class="status-badge status-approved">● Approved</span>
+                  {% elif req.status == "In Progress" %}<span class="status-badge status-inprogress">● In Progress</span>
+                  {% elif req.status == "Done for Review" %}<span class="status-badge status-doneforreview">● Done for Review</span>
+                  {% elif req.status == "Completed" %}<span class="status-badge status-completed">● Completed</span>
+                  {% elif req.status == "Cancelled" %}<span class="status-badge status-cancelled">● Cancelled</span>
+                  {% else %}<span class="status-badge">{{ req.status }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if req.assigned_personnel.all %}
+                    {% for p in req.assigned_personnel.all %}
+                      {{ p.get_full_name|default:p.username }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <span class="text-muted">Unassigned</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{% url 'gso_requests:unit_head_request_detail' req.id %}" class="btn btn-sm btn-primary">Open</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center text-muted">No requests found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

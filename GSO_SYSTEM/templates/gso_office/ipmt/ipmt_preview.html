@@ -1,0 +1,230 @@
+{% extends "gso_office/gso_base_dashboard.html" %}
+{% block title %}IPMT Preview{% endblock %}
+
+{% block main_content %}
+<div class="header d-flex align-items-center justify-content-between mb-3">
+    <h1 class="page-title">IPMT Preview - {{ month_filter }}</h1>
+    <div class="btn-group">
+        <button id="edit-btn" class="btn btn-warning" {% if reports|length == 0 %}disabled{% endif %}>Edit</button>
+        <button id="accept-btn" class="btn btn-success" {% if reports|length == 0 %}disabled{% endif %}>Accept / Export</button>
+        <button id="save-btn" class="btn btn-primary d-none">Save</button>
+        <button id="cancel-btn" class="btn btn-secondary d-none">Cancel</button>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-bordered" id="ipmt-table">
+        <thead>
+            <tr>
+                <th>Success Indicators</th>
+                <th>Actual Accomplishments</th>
+                <th>Remarks</th>
+                <th class="action-col d-none">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if reports %}
+                {% for row in reports %}
+                <tr data-row-id="{{ forloop.counter0 }}" data-war-ids="{{ row.war_ids|join:',' }}">
+                    <td>{{ row.indicator }}</td>
+                    <td>
+                        <span class="desc-text">{{ row.description|default:"" }}</span>
+                        <input class="desc-input form-control d-none" type="text" value="{{ row.description|default:"" }}">
+                    </td>
+                    <td>
+                        <span class="remarks-text">{{ row.remarks|default:"" }}</span>
+                        <input class="remarks-input form-control d-none" type="text" value="{{ row.remarks|default:"" }}">
+                    </td>
+                    <td class="action-col">
+                        <button class="delete-btn btn btn-danger btn-sm d-none">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4" class="text-center">No reports available yet.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const editBtn = document.getElementById("edit-btn");
+    const acceptBtn = document.getElementById("accept-btn");
+    const saveBtn = document.getElementById("save-btn");
+    const cancelBtn = document.getElementById("cancel-btn");
+    const table = document.getElementById("ipmt-table");
+    let rows = table.querySelectorAll("tbody tr");
+
+    let editMode = false;
+    let originalData = [];
+
+    function enterEditMode() {
+        editMode = true;
+        originalData = [];
+
+        rows.forEach(row => {
+            const descInput = row.querySelector(".desc-input");
+            const remarksInput = row.querySelector(".remarks-input");
+            const descText = row.querySelector(".desc-text");
+            const remarksText = row.querySelector(".remarks-text");
+            const deleteBtn = row.querySelector(".delete-btn");
+
+            if (!descInput) return;
+
+            originalData.push({
+                desc: descInput.value,
+                remarks: remarksInput.value
+            });
+
+            descText.classList.add("d-none");
+            remarksText.classList.add("d-none");
+            descInput.classList.remove("d-none");
+            remarksInput.classList.remove("d-none");
+
+            if (deleteBtn) deleteBtn.classList.remove("d-none");
+            if (deleteBtn) deleteBtn.addEventListener("click", () => row.remove());
+        });
+
+        editBtn.classList.add("d-none");
+        acceptBtn.classList.add("d-none");
+        saveBtn.classList.remove("d-none");
+        cancelBtn.classList.remove("d-none");
+    }
+
+    function exitEditMode() {
+        editMode = false;
+        rows = table.querySelectorAll("tbody tr");
+        rows.forEach((row, index) => {
+            const descInput = row.querySelector(".desc-input");
+            const remarksInput = row.querySelector(".remarks-input");
+            const descText = row.querySelector(".desc-text");
+            const remarksText = row.querySelector(".remarks-text");
+            const deleteBtn = row.querySelector(".delete-btn");
+
+            if (!descInput) return;
+
+            descText.textContent = descInput.value;
+            remarksText.textContent = remarksInput.value;
+
+            descText.classList.remove("d-none");
+            remarksText.classList.remove("d-none");
+            descInput.classList.add("d-none");
+            remarksInput.classList.add("d-none");
+            if (deleteBtn) deleteBtn.classList.add("d-none");
+        });
+
+        editBtn.classList.remove("d-none");
+        acceptBtn.classList.remove("d-none");
+        saveBtn.classList.add("d-none");
+        cancelBtn.classList.add("d-none");
+    }
+
+    editBtn?.addEventListener("click", enterEditMode);
+
+    cancelBtn?.addEventListener("click", function() {
+        rows.forEach((row, index) => {
+            const descInput = row.querySelector(".desc-input");
+            const remarksInput = row.querySelector(".remarks-input");
+            if (!descInput) return;
+            descInput.value = originalData[index].desc;
+            remarksInput.value = originalData[index].remarks;
+        });
+        exitEditMode();
+    });
+
+    saveBtn?.addEventListener("click", async function() {
+        const payload = [];
+        rows.forEach(row => {
+            const descInput = row.querySelector(".desc-input");
+            const remarksInput = row.querySelector(".remarks-input");
+            if (!descInput) return;
+            payload.push({
+                indicator: row.children[0].textContent.trim(),
+                description: descInput.value.trim(),
+                remarks: remarksInput.value.trim(),
+                war_ids: row.dataset.warIds.split(",").filter(Boolean).map(Number)
+            });
+        });
+
+        const response = await fetch("{% url 'gso_reports:save_ipmt' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({
+                month: "{{ month_filter }}",
+                unit: "{{ unit_filter }}",
+                personnel: {{ personnel_names|safe }}.join(","),
+                rows: payload
+            })
+        });
+
+        if (response.ok) {
+            alert("IPMT saved successfully!");
+            exitEditMode();
+        } else {
+            alert("Error saving IPMT.");
+        }
+    });
+
+    // ✅ FIXED EXPORT SECTION
+    acceptBtn?.addEventListener("click", function() {
+        const payload = [];
+        rows.forEach(row => {
+            const descInput = row.querySelector(".desc-input");
+            const remarksInput = row.querySelector(".remarks-input");
+            if (!descInput) return;
+            payload.push({
+                indicator: row.children[0].textContent.trim(),
+                description: descInput.value.trim(),
+                remarks: remarksInput.value.trim(),
+                war_ids: row.dataset.warIds.split(",").filter(Boolean).map(Number)
+            });
+        });
+
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = "{% url 'gso_reports:generate_ipmt' %}";
+
+        const rowsInput = document.createElement("input");
+        rowsInput.type = "hidden";
+        rowsInput.name = "rows";
+        rowsInput.value = JSON.stringify(payload);
+        form.appendChild(rowsInput);
+
+        const monthInput = document.createElement("input");
+        monthInput.type = "hidden";
+        monthInput.name = "month";
+        monthInput.value = "{{ month_filter }}";
+        form.appendChild(monthInput);
+
+        const unitInput = document.createElement("input");
+        unitInput.type = "hidden";
+        unitInput.name = "unit";
+        unitInput.value = "{{ unit_filter }}";
+        form.appendChild(unitInput);
+
+        // ✅ FIX: Include personnel names
+        const personnelInput = document.createElement("input");
+        personnelInput.type = "hidden";
+        personnelInput.name = "personnel";
+        personnelInput.value = {{ personnel_names|safe }}.join(",");
+        form.appendChild(personnelInput);
+
+        const csrfInput = document.createElement("input");
+        csrfInput.type = "hidden";
+        csrfInput.name = "csrfmiddlewaretoken";
+        csrfInput.value = "{{ csrf_token }}";
+        form.appendChild(csrfInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    });
+
+});
+</script>
+{% endblock %}

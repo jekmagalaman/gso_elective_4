@@ -1,0 +1,101 @@
+{% extends "unit_heads/unit_head_base_dashboard.html" %}
+
+{% block title %}Request #{{ req.id }}{% endblock %}
+
+{% block main_content %}
+<div class="header d-flex align-items-center justify-content-between mb-4">
+  <h1 class="page-title">REQUEST DETAILS</h1>
+  <a href="{% url 'gso_requests:unit_head_request_management' %}" class="btn btn-secondary btn-sm">← Back</a>
+</div>
+
+<!-- Request Info -->
+<div class="card p-4 shadow-sm mb-4">
+  <h4><b>REQUEST INFORMATION</b></h4>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <p><strong>ID:</strong> {{ req.id }}</p>
+      <p><strong>Requestor:</strong> {{ req.custom_full_name }}</p>
+      <p><strong>Department:</strong> {{ req.requestor.department }}</p>
+    </div>
+    <div class="col-md-6">
+      <p><strong>Date Submitted:</strong> {{ req.created_at|date:"Y-m-d H:i" }}</p>
+      <p><strong>Status:</strong> {{ req.status }}</p>
+      <p>
+        <strong>Assigned Personnel:</strong>
+        {% if req.assigned_personnel.all %}
+          {% for p in req.assigned_personnel.all %}{{ p.get_full_name|default:p.username }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        {% else %}Unassigned{% endif %}
+      </p>
+      <p>
+        <strong>Assigned Materials:</strong>
+        {% if req.requestmaterial_set.all %}
+          <ul>
+            {% for rm in req.requestmaterial_set.all %}
+              <li>{{ rm.material.name }} - {{ rm.quantity }} {{ rm.material.unit }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}No materials assigned{% endif %}
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Progress Reports -->
+<div class="card p-4 shadow-sm mb-4">
+  <h4><b>PROGRESS REPORTS</b></h4>
+  {% if reports %}
+    <ul>
+      {% for r in reports %}
+        <li>{{ r.personnel.get_full_name|default:r.personnel.username }}: {{ r.report_text }} ({{ r.created_at|date:"Y-m-d H:i" }})</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">No reports yet.</p>
+  {% endif %}
+</div>
+
+{% if req.status not in "Completed Done for Review" %}
+<form method="post">
+  {% csrf_token %}
+
+  <!-- Personnel Assignment -->
+  <div class="card p-4 shadow-sm mb-4">
+    <h4>Assign Personnel</h4>
+    {% for p in personnel %}
+      <div class="form-check">
+        <input type="checkbox" name="personnel_ids" value="{{ p.id }}" id="personnel_{{ p.id }}" class="form-check-input"
+        {% if p in req.assigned_personnel.all %}checked{% endif %}>
+        <label for="personnel_{{ p.id }}">{{ p.get_full_name|default:p.username }}</label>
+      </div>
+    {% empty %}
+      <p>No personnel available.</p>
+    {% endfor %}
+  </div>
+
+  <!-- Materials Assignment -->
+  <div class="card p-4 shadow-sm mb-4">
+    <h4>Select Materials</h4>
+    {% for m in materials %}
+      <div>
+        <input type="checkbox" name="material_ids" value="{{ m.id }}" class="form-check-input">
+        {{ m.name }} ({{ m.quantity }} {{ m.unit }})
+        <input type="number" name="quantity_{{ m.id }}" value="0" min="1" class="form-control-sm" style="width:70px;">
+      </div>
+    {% empty %}
+      <p>No materials available.</p>
+    {% endfor %}
+  </div>
+
+  <button type="submit" name="action" value="assign" class="btn btn-success">Save Assignments</button>
+</form>
+{% endif %}
+
+{% if req.status == "Done for Review" %}
+<form method="post">
+  {% csrf_token %}
+  <button type="submit" name="action" value="approve" class="btn btn-success">Approve Completion</button>
+  <button type="submit" name="action" value="reject" class="btn btn-danger">Send Back</button>
+</form>
+{% endif %}
+
+{% endblock %}

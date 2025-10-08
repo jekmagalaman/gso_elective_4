@@ -1,0 +1,187 @@
+{% extends "gso_office/gso_base_dashboard.html" %}
+
+{% block title %}Work Accomplishment Report{% endblock %}
+
+{% block main_content %}
+<div class="header d-flex align-items-center justify-content-between">
+    <h1 class="page-title">WORK ACCOMPLISHMENT REPORT</h1>
+
+    <form method="get" class="d-flex gap-2">
+        <input type="text" name="user_status" class="form-control form-control-sm" placeholder="Search..." value="{{ request.GET.user_status }}">
+        <select name="unit" class="form-select form-select-sm" onchange="this.form.submit()">
+          <option value="">All Units</option>
+          <option value="repair and maintenance" {% if request.GET.unit == 'repair and maintenance' %}selected{% endif %}>Repair and Maintenance</option>
+          <option value="utility" {% if request.GET.unit == 'utility' %}selected{% endif %}>Utility</option>
+          <option value="electrical" {% if request.GET.unit == 'electrical' %}selected{% endif %}>Electrical</option>
+          <option value="motorpool" {% if request.GET.unit == 'motorpool' %}selected{% endif %}>Motorpool</option>
+        </select>
+    </form>
+
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ipmtModal">
+        Generate IPMT
+    </button>
+</div>
+
+<!-- IPMT Modal -->
+<div class="modal fade" id="ipmtModal" tabindex="-1" aria-labelledby="ipmtModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="get" action="{% url 'gso_reports:preview_ipmt' %}">
+        <div class="modal-header">
+          <h5 class="modal-title">Generate IPMT Report</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="unit" class="form-label">Select Unit</label>
+            <select name="unit" id="unit" class="form-select" onchange="filterPersonnel()">
+              <option value="">All Units</option>
+              <option value="repair and maintenance">Repair and Maintenance</option>
+              <option value="utility">Utility</option>
+              <option value="electrical">Electrical</option>
+              <option value="motorpool">Motorpool</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Select Personnel (leave empty for all)</label>
+            <div id="personnel-container" class="d-flex flex-column"></div>
+            <small class="text-muted">You can select multiple personnel.</small>
+          </div>
+
+          <div class="mb-3">
+            <label for="month" class="form-label">Select Month</label>
+            <input type="month" name="month" id="month" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Generate Preview</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Reports Table -->
+<div class="table-container mt-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Request Type / Unit</th>
+                <th>Description</th>
+                <th>Requesting Office</th>
+                <th>Assigned Personnel</th>
+                <th>Status</th>
+                <th>Rating</th>
+                <th>Source</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if reports %}
+                {% for report in reports %}
+                <tr>
+                    <td>{{ report.date|date:"Y-m-d" }}</td>
+                    <td>{{ report.unit|title }}</td>
+                    <td>
+                        <span class="war-desc" 
+                              id="war-description-{{ report.id }}"
+                              data-id="{{ report.id }}"
+                              data-type="{{ report.type }}">
+                            {% if report.type == "WorkAccomplishmentReport" %}
+                                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                                Generating AI description...
+                            {% else %}
+                                {{ report.display_description|default:"(No description)" }}
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>{{ report.requesting_office }}</td>
+                    <td>{% for p in report.personnel %}{{ p }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                    <td>{{ report.status|default:"Completed" }}</td>
+                    <td>{{ report.rating|default:"Not Rated" }}</td>
+                    <td>
+                        {% if report.request %}
+                            <span class="badge bg-success">Live</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Migrated</span>
+                        {% endif %}
+                    </td>
+
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="8" class="text-center">No reports available</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Personnel JSON -->
+{{ personnel_list|json_script:"personnel-data" }}
+
+<script>
+const personnelList = JSON.parse(document.getElementById('personnel-data').textContent);
+
+// Organize personnel by unit
+const personnelData = {};
+personnelList.forEach(p => {
+    const unitName = p.unit || 'unassigned';
+    if (!personnelData[unitName]) personnelData[unitName] = [];
+    personnelData[unitName].push({
+        name: p.full_name || p.username,
+        safeId: (p.full_name || p.username).replace(/\s+/g, '-')
+    });
+});
+
+const personnelContainer = document.getElementById('personnel-container');
+
+function filterPersonnel() {
+    const selectedUnit = document.getElementById('unit').value || '';
+    personnelContainer.innerHTML = "";
+
+    const list = selectedUnit && personnelData[selectedUnit] ? personnelData[selectedUnit] : Object.values(personnelData).flat();
+
+    if (!list.length) {
+      personnelContainer.innerHTML = "<p class='text-muted'>No personnel available</p>";
+      return;
+    }
+
+    list.forEach(p => {
+        const div = document.createElement("div");
+        div.classList.add("form-check");
+        div.innerHTML = `
+            <input class="form-check-input" type="checkbox" name="personnel[]" value="${p.name}" id="person_${p.safeId}">
+            <label class="form-check-label" for="person_${p.safeId}">${p.name}</label>
+        `;
+        personnelContainer.appendChild(div);
+    });
+}
+
+// Efficient async polling for AI description
+async function fetchWarDescription(warId, retries = 15) {
+    if (retries <= 0) return;
+    try {
+        const res = await fetch(`/gso_reports/war-description/${warId}/`);
+        const data = await res.json();
+        if (data.description?.trim()) {
+            document.getElementById(`war-description-${warId}`).innerHTML = data.description;
+        } else {
+            setTimeout(() => fetchWarDescription(warId, retries - 1), 2000);
+        }
+    } catch {
+        setTimeout(() => fetchWarDescription(warId, retries - 1), 2000);
+    }
+}
+
+document.getElementById('unit').addEventListener('change', filterPersonnel);
+document.addEventListener('DOMContentLoaded', function() {
+    filterPersonnel();
+    {% for report in reports %}
+        {% if report.type == "WorkAccomplishmentReport" %}
+            fetchWarDescription({{ report.id }});
+        {% endif %}
+    {% endfor %}
+});
+</script>
+{% endblock %}

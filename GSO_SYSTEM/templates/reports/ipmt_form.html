@@ -1,0 +1,22 @@
+<h2>Electrical IPMT Generator</h2>
+<form method="post">
+    {% csrf_token %}
+    
+    <label for="person">Select Person:</label><br>
+    <select name="person" id="person" required>
+        <option value="">-- Choose a Person --</option>
+        {% for p in personnel %}
+            <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+    </select><br><br>
+
+    <label for="prompt">Enter Task / Success Indicator:</label><br>
+    <textarea name="prompt" rows="4" cols="50"></textarea><br><br>
+
+    <button type="submit">Generate IPMT</button>
+</form>
+
+{% if result %}
+<h3>Generated IPMT for {{ selected_person_name }}:</h3>
+<p>{{ result }}</p>
+{% endif %}

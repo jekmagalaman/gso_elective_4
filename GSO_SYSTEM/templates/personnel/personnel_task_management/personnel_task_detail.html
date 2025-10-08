@@ -1,0 +1,114 @@
+{% extends "personnel/personnel_base_dashboard.html" %}
+{% block title %}Task Detail{% endblock %}
+
+{% block main_content %}
+<div class="header d-flex justify-content-between align-items-center mb-4">
+  <h1 class="page-title">Task Detail</h1>
+  <a href="{% url 'gso_requests:personnel_task_management' %}" class="btn btn-secondary btn-sm">← Back to Tasks</a>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body">
+    <div class="row g-4 mb-4">
+      <div class="col-md-6">
+        <p><strong>Request ID:</strong> #{{ task.id }}</p>
+        <p><strong>Date Submitted:</strong> {{ task.created_at|date:"Y-m-d H:i" }}</p>
+        <p><strong>Requestor:</strong> {{ task.full_name }}</p>
+        <p><strong>Requesting Office:</strong> {{ task.requestor.department }}</p>
+        <p><strong>Unit:</strong> {{ task.unit|title }}</p>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex flex-column gap-2">
+          <div>
+            <strong>Status:</strong>
+            <span class="badge 
+              {% if task.status == 'Pending' %} bg-warning text-dark
+              {% elif task.status == 'Approved' %} bg-primary
+              {% elif task.status == 'In Progress' %} bg-info
+              {% elif task.status == 'Done for Review' %} bg-purple text-white
+              {% elif task.status == 'Completed' %} bg-success
+              {% elif task.status == 'Cancelled' %} bg-danger
+              {% endif %}">
+              {{ task.status }}
+            </span>
+          </div>
+          <div>
+            <strong>Description:</strong>
+            <div class="p-2 mt-1 border rounded bg-light">{{ task.description }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-4">
+      <h5 class="fw-bold">Materials Needed</h5>
+      {% if materials %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Material</th>
+                <th>Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rm in materials %}
+                <tr>
+                  <td>{{ rm.material.name }}</td>
+                  <td>
+                    <span class="badge bg-primary">{{ rm.quantity }} {{ rm.material.unit_of_measurement }}</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted mb-0">No materials assigned for this task.</p>
+      {% endif %}
+    </div>
+
+    {% if task.status in "Approved,In Progress" %}
+    <div class="d-flex justify-content-end mt-3">
+      <form method="post" class="d-flex gap-2">
+        {% csrf_token %}
+        {% if task.status == "Approved" %}
+          <button type="submit" name="start" class="btn btn-primary">Start Task</button>
+        {% elif task.status == "In Progress" %}
+          <button type="submit" name="done" class="btn btn-success">Mark as Done (For Review)</button>
+        {% endif %}
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="mb-4">
+  <h5 class="fw-bold">Progress Reports</h5>
+  {% if reports %}
+    <ul class="list-group mb-3">
+      {% for r in reports %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <strong>{{ r.personnel.get_full_name|default:r.personnel.username }}</strong>
+            <small class="text-muted">{{ r.created_at|date:"Y-m-d H:i" }}</small>
+          </div>
+          <p class="mb-0">{{ r.report_text }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-muted">No reports submitted yet.</p>
+  {% endif %}
+
+  {% if task.status == "In Progress" %}
+    <form method="post">
+      {% csrf_token %}
+      <textarea name="report_text" class="form-control mb-2" rows="3" placeholder="Write your progress report here..."></textarea>
+      <div class="d-flex justify-content-end mt-3">
+        <button type="submit" name="add_report" class="btn btn-success">Save Report</button>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

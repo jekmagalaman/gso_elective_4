@@ -1,0 +1,167 @@
+{% extends "gso_office/gso_base_dashboard.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Add User{% endblock %}
+
+{% block main_content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <!-- Card Header -->
+        <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #0d47a1;">
+            <h4 class="mb-0 text-white">Add New User</h4>
+            <a href="{% url 'gso_accounts:account_management' %}" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </a>
+        </div>
+
+        <!-- Card Body -->
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="row g-3">
+                    <!-- Role -->
+                    <div class="col-md-6">
+                        <label for="id_role" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Role</label>
+                        {{ form.role|add_class:"form-select" }}
+                    </div>
+
+                    <!-- Unit -->
+                    <div class="col-md-6" id="unitField">
+                        <label for="id_unit" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Unit</label>
+                        {{ form.unit|add_class:"form-select" }}
+                    </div>
+
+                    <!-- Username -->
+                    <div class="col-md-6" id="usernameField">
+                        <label for="id_username" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Username</label>
+                        {{ form.username|add_class:"form-control" }}
+                    </div>
+
+                    <!-- First Name -->
+                    <div class="col-md-6" id="firstNameField">
+                        <label for="id_first_name" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">First Name</label>
+                        {{ form.first_name|add_class:"form-control" }}
+                    </div>
+
+                    <!-- Last Name -->
+                    <div class="col-md-6" id="lastNameField">
+                        <label for="id_last_name" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Last Name</label>
+                        {{ form.last_name|add_class:"form-control" }}
+                    </div>
+
+                    <!-- Department -->
+                    <div class="col-md-6" id="deptField">
+                        <label for="id_department" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Department</label>
+                        {{ form.department|add_class:"form-select" }}
+                    </div>
+
+                    <!-- Password -->
+                    <div class="col-md-6 position-relative" id="passwordField">
+                        <label for="id_password" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Password</label>
+                        <div class="input-group">
+                            {{ form.password|add_class:"form-control" }}
+                            <span class="input-group-text toggle-password" style="cursor: pointer;">
+                                <i class="bi bi-eye" id="togglePassword"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="col-md-6 position-relative" id="confirmPasswordField">
+                        <label for="id_confirm_password" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Confirm Password</label>
+                        <div class="input-group">
+                            {{ form.confirm_password|add_class:"form-control" }}
+                            <span class="input-group-text toggle-password" style="cursor: pointer;">
+                                <i class="bi bi-eye" id="toggleConfirmPassword"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="col-md-6">
+                        <label for="id_account_status" class="form-label fw-semibold text-uppercase" style="color: #0d47a1;">Status</label>
+                        {{ form.account_status|add_class:"form-select" }}
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save me-1"></i> Save
+                    </button>
+                    <a href="{% url 'gso_accounts:account_management' %}" class="btn btn-secondary">
+                        <i class="bi bi-x-lg me-1"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const roleField = document.getElementById("id_role");
+
+    const username = document.getElementById("usernameField");
+    const firstName = document.getElementById("firstNameField");
+    const lastName = document.getElementById("lastNameField");
+    const unitField = document.getElementById("unitField");
+    const deptField = document.getElementById("deptField");
+    const passwordField = document.getElementById("passwordField");
+    const confirmPasswordField = document.getElementById("confirmPasswordField");
+
+    function toggleFields() {
+        if (!roleField) return;
+
+        if (roleField.value === "requestor") {
+            username.style.display = "block";
+            firstName.style.display = "none";
+            lastName.style.display = "none";
+            unitField.style.display = "none";
+            deptField.style.display = "block";
+            passwordField.style.display = "block";
+            confirmPasswordField.style.display = "block";
+        } else if (roleField.value === "gso" || roleField.value === "director") {
+            username.style.display = "block";
+            firstName.style.display = "block";
+            lastName.style.display = "block";
+            unitField.style.display = "none";
+            deptField.style.display = "none";
+            passwordField.style.display = "block";
+            confirmPasswordField.style.display = "block";
+        } else {
+            username.style.display = "block";
+            firstName.style.display = "block";
+            lastName.style.display = "block";
+            unitField.style.display = "block";
+            deptField.style.display = "none";
+            passwordField.style.display = "block";
+            confirmPasswordField.style.display = "block";
+        }
+    }
+
+    roleField.addEventListener("change", toggleFields);
+    toggleFields();
+
+    // Show/Hide Password Logic
+    const passwordInput = document.getElementById("id_password");
+    const togglePassword = document.getElementById("togglePassword");
+    togglePassword.addEventListener("click", function() {
+        const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+        passwordInput.setAttribute("type", type);
+        this.classList.toggle("bi-eye");
+        this.classList.toggle("bi-eye-slash");
+    });
+
+    const confirmPasswordInput = document.getElementById("id_confirm_password");
+    const toggleConfirmPassword = document.getElementById("toggleConfirmPassword");
+    toggleConfirmPassword.addEventListener("click", function() {
+        const type = confirmPasswordInput.getAttribute("type") === "password" ? "text" : "password";
+        confirmPasswordInput.setAttribute("type", type);
+        this.classList.toggle("bi-eye");
+        this.classList.toggle("bi-eye-slash");
+    });
+});
+</script>
+{% endblock %}

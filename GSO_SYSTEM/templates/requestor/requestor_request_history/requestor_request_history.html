@@ -1,0 +1,62 @@
+{% extends "requestor/requestor_base_dashboard.html" %}
+
+{% block title %}Request History{% endblock %}
+
+{% block main_content %}
+<main class="main-content container mt-4">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="fw-bold " style="color: #002e72;">REQUEST HISTORY</h2>
+  </div>
+
+  <!-- Table -->
+  <div class="table-responsive shadow-sm rounded">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-primary text-uppercase">
+        <tr>
+          <th>Job No.</th>
+          <th>Requestor</th>
+          <th>Unit</th>
+          <th>Request Date</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if request_history %}
+          {% for req in request_history %}
+          <tr>
+            <td>{{ req.id }}</td>
+            <td>{{ req.custom_full_name|default:req.requestor.get_full_name }}</td>
+            <td>{{ req.unit.name }}</td>
+            <td>{{ req.created_at|date:"M d, Y" }}</td>
+            <td>
+              {% if req.status == "Pending" %}
+                <span class="badge bg-warning text-dark">Pending</span>
+              {% elif req.status == "Approved" %}
+                <span class="badge bg-info text-dark">Approved</span>
+              {% elif req.status == "In Progress" %}
+                <span class="badge bg-primary">In Progress</span>
+              {% elif req.status == "Done for Review" %}
+                <span class="badge bg-secondary">Done for Review</span>
+              {% elif req.status == "Completed" %}
+                <span class="badge bg-success">Completed</span>
+              {% elif req.status == "Cancelled" %}
+                <span class="badge bg-danger">Cancelled</span>
+              {% else %}
+                <span class="badge bg-light text-dark">{{ req.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4" class="text-center text-muted">No Request History Found</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</main>
+{% endblock %}

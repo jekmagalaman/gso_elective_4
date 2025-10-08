@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel="stylesheet" href="{% static 'css/login_style.css' %}" />
+</head>
+<body>
+    <div class="login-container">
+        <img src="{% static 'images/gso_logo.png' %}" alt="General Services Office Logo">
+        <h2>Welcome!</h2>
+        <p>Log In to your Account</p>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.username.errors }}
+            <input type="text" name="username" placeholder="Username" required>
+
+            {{ form.password.errors }}
+            <div class="password-container">
+                <input type="password" name="password" id="password" placeholder="Password" required>
+                <span class="toggle-password" onclick="togglePassword()">
+                    <img id="toggleIcon" src="{% static 'images/login/unhide_pass.png' %}" alt="See Password">
+                </span>
+            </div>
+
+            <button type="submit">LOG IN</button>
+        </form>
+
+        {% if form.errors %}
+            <div class="error-msg">Invalid username or password.</div>
+        {% endif %}
+    </div>
+
+    <script>
+        function togglePassword() {
+            const passwordField = document.getElementById("password");
+            const icon = document.getElementById("toggleIcon");
+
+            if (passwordField.type === "password") {
+                passwordField.type = "text";
+                icon.src = "{% static 'images/login/hide_pass.png' %}"; // change to hidden-eye icon
+                icon.alt = "Hide Password";
+            } else {
+                passwordField.type = "password";
+                icon.src = "{% static 'images/login/unhide_pass.png' %}"; // change back to eye icon
+                icon.alt = "Show Password";
+            }
+        }
+    </script>
+</body>
+</html>

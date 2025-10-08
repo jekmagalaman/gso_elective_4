@@ -1,0 +1,161 @@
+{% extends "requestor/requestor_base_dashboard.html" %}
+
+{% block title %}Requestor Profile{% endblock %}
+
+{% block main_content %}
+<style>
+/* === Reset & Base === */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f7f7f7; color: #1f2937; line-height: 1.5; }
+
+.container { min-height: 100vh; padding: 1.5rem; display: flex; justify-content: center; }
+
+.profile-card {
+  max-width: 600px; width: 100%;
+  background-color: #fff; border-radius: 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 2rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.profile-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+
+.profile-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+.welcome-text { font-size: 1.75rem; font-weight: 700; color: #1e40af; }
+
+.edit-btn, .save-btn {
+  border: none; padding: 0.5rem 1.25rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease;
+}
+.edit-btn { background-color: #2563eb; color: #fff; }
+.edit-btn:hover { background-color: #1e40af; transform: translateY(-1px); }
+.save-btn {
+  background-color: #10b981; color: #fff; display: none; width: 100%; margin-top: 1rem;
+}
+.save-btn:hover { background-color: #059669; transform: translateY(-1px); }
+
+.fields-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+.field-group { display: flex; flex-direction: column; gap: 0.25rem; }
+.field-label { font-size: 0.875rem; font-weight: 600; color: #4b5563; }
+
+.field-display, .field-input {
+  width: 100%; padding: 0.625rem 0.75rem; border-radius: 0.5rem;
+  background-color: #f3f4f6; min-height: 2.5rem; display: flex; align-items: center; transition: all 0.3s ease;
+}
+
+.field-input {
+  border: 1px solid #d1d5db; outline: none;
+  opacity: 0; transform: translateY(-5px);
+}
+.field-input.show { opacity: 1; transform: translateY(0); }
+.field-display.hide { opacity: 0; transform: translateY(5px); }
+
+/* Password Fields */
+.password-section { margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem; display: none; }
+.password-section.show { display: block; }
+
+.password-group { display: flex; flex-direction: column; gap: 0.5rem; position: relative; }
+.password-group input {
+  padding: 0.625rem 0.75rem; border-radius: 0.5rem; border: 1px solid #d1d5db; outline: none; font-size: 1rem;
+}
+.password-group input:focus { border-color: #2563eb; }
+
+.toggle-password {
+  position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; color: #6b7280; font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .container { padding: 1rem; }
+  .profile-card { padding: 1.5rem; }
+}
+</style>
+
+<div class="container">
+  <div class="profile-card">
+    <div class="profile-header">
+      <h1 class="welcome-text">Welcome, {{ request.user.get_full_name|default:request.user.username }}</h1>
+      <button class="edit-btn" id="editBtn" onclick="toggleEdit()">Edit</button>
+    </div>
+
+    <form method="post" id="profileForm">
+      {% csrf_token %}
+      <div class="fields-grid">
+        <!-- First Name -->
+        <div class="field-group">
+          <label class="field-label">First Name</label>
+          <div class="field-display" id="firstName-display">{{ request.user.first_name }}</div>
+          <input type="text" class="field-input" id="firstName-input" name="first_name" placeholder="Enter first name">
+        </div>
+
+        <!-- Last Name -->
+        <div class="field-group">
+          <label class="field-label">Last Name</label>
+          <div class="field-display" id="lastName-display">{{ request.user.last_name }}</div>
+          <input type="text" class="field-input" id="lastName-input" name="last_name" placeholder="Enter last name">
+        </div>
+
+        <!-- Email -->
+        <div class="field-group">
+          <label class="field-label">Email</label>
+          <div class="field-display" id="email-display">{{ request.user.email }}</div>
+          <input type="email" class="field-input" id="email-input" name="email" placeholder="Enter email" value="{{ request.user.email }}">
+        </div>
+
+        <!-- Role (display only) -->
+        <div class="field-group">
+          <label class="field-label">Role</label>
+          <div class="field-display" id="role-display">{{ request.user.get_role_display }}</div>
+        </div>
+
+      <!-- Password section -->
+      <div class="password-section" id="passwordSection">
+        <h2>Change Password</h2>
+        <div class="password-group">
+          <label>Current Password</label>
+          <input type="password" name="current_password" id="current-password">
+          <button type="button" class="toggle-password" onclick="togglePassword('current-password')">Show</button>
+        </div>
+        <div class="password-group">
+          <label>New Password</label>
+          <input type="password" name="new_password" id="new-password">
+          <button type="button" class="toggle-password" onclick="togglePassword('new-password')">Show</button>
+        </div>
+        <div class="password-group">
+          <label>Confirm New Password</label>
+          <input type="password" name="confirm_password" id="confirm-password">
+          <button type="button" class="toggle-password" onclick="togglePassword('confirm-password')">Show</button>
+        </div>
+      </div>
+
+      <button type="submit" class="save-btn" id="saveBtn">Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<script>
+let isEditing = false;
+
+function toggleEdit() {
+  isEditing = !isEditing;
+
+  document.getElementById("editBtn").style.display = isEditing ? "none" : "inline-block";
+  document.getElementById("saveBtn").style.display = isEditing ? "block" : "none";
+  document.getElementById("passwordSection").classList.toggle("show", isEditing);
+
+  // Toggle only editable fields
+  ["firstName-input", "lastName-input", "email-input"].forEach(id => {
+    document.getElementById(id).classList.toggle("show", isEditing);
+  });
+
+  // Hide or show display fields (all except role)
+  ["firstName-display", "lastName-display", "email-display"].forEach(id => {
+    document.getElementById(id).classList.toggle("hide", isEditing);
+  });
+}
+
+function togglePassword(fieldId) {
+  const input = document.getElementById(fieldId);
+  const btn = input.nextElementSibling;
+  if (input.type === "password") { input.type = "text"; btn.textContent = "Hide"; }
+  else { input.type = "password"; btn.textContent = "Show"; }
+}
+</script>
+{% endblock %}

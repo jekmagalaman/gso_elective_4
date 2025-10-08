@@ -1,0 +1,226 @@
+{% extends "requestor/requestor_base_dashboard.html" %}
+
+{% block title %}Request Management{% endblock %}
+
+{% block main_content %}
+<main class="main-content container mt-4">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="fw-bold " style="color: #002e72;">REQUEST MANAGEMENT</h2>
+    <button class="btn btn-primary" id="openModal" style="background-color: #002e72;">
+      <i class="bi bi-plus-lg me-1" ></i> Add Request
+    </button>
+  </div>
+
+  <!-- Requests Table -->
+  <div class="table-responsive shadow-sm rounded">
+    <table class="table table-striped table-hover align-middle">
+      <thead class="table-primary text-uppercase">
+        <tr>
+          <th>Job No.</th>
+          <th>Requestor Name</th>
+          <th>Unit</th>
+          <th>Request Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for req in requests %}
+        <tr>
+          <td>{{ req.id }}</td>
+          <td>{{ req.custom_full_name|default:req.requestor.get_full_name }}</td>
+          <td>{{ req.unit.name }}</td>
+          <td>{{ req.created_at|date:"M d, Y" }}</td>
+          <td>
+            {% if req.status == "Pending" %}
+              <span class="badge bg-warning text-dark">Pending</span>
+            {% elif req.status == "Approved" %}
+              <span class="badge bg-info text-dark">Approved</span>
+            {% elif req.status == "In Progress" %}
+              <span class="badge bg-primary">In Progress</span>
+            {% elif req.status == "Done for Review" %}
+              <span class="badge bg-secondary">Done for Review</span>
+            {% elif req.status == "Completed" %}
+              <span class="badge bg-success">Completed</span>
+            {% elif req.status == "Cancelled" %}
+              <span class="badge bg-danger">Cancelled</span>
+            {% else %}
+              <span class="badge bg-light text-dark">{{ req.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary"
+              onclick="openRequestModal('{{ req.id }}','{{ req.unit.name }}','{{ req.created_at|date:'Y-m-d' }}','{{ req.status }}','{{ req.description|escapejs }}','{{ req.assigned_personnel.first.get_full_name|default:'Unassigned' }}')">
+              <i class="bi bi-eye me-1"></i> View
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-muted">No requests found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+
+
+
+
+<!-- Modal 1: Select Unit -->
+<div id="requestModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Select Request Type</h3>
+      <span class="close-btn" id="closeModal">&times;</span>
+    </div>
+    <div class="modal-options">
+      {% for unit in units %}
+        <button class="modal-option" data-id="{{ unit.id }}" data-unit="{{ unit.name }}">
+          {{ unit.name }}
+        </button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal 2: Add Request -->
+<div id="formModal2" class="modal2">
+  <div class="modal2-content">
+    <div class="modal2-header">
+      <div class="modal2-header-left">
+        <span class="modal2-back-btn" id="backToModal1">&#8592;</span>
+        <h2 class="modal2-title" id="formTitle">Review Request Details!</h2>
+      </div>
+      <button class="modal2-close-btn" onclick="closeModal2()">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'gso_requests:add_request' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="modal2-body">
+        <input type="hidden" name="unit" id="selectedUnit">
+
+        <div class="modal2-category-section">
+          <label class="modal2-category-label">PLEASE CHECK THE APPROPRIATE BOX</label>
+          <div class="modal2-checkbox-group">
+            <label><input type="checkbox" name="labor" value="1"> LABOR</label>
+            <label><input type="checkbox" name="materials" value="1"> MATERIALS</label>
+            <label><input type="checkbox" name="others" value="1"> OTHERS</label>
+          </div>
+        </div>
+
+        <div class="modal2-section">
+          <h3 class="modal2-section-title">Requestor Information</h3>
+          <div class="modal2-grid">
+            <input type="text" class="modal2-input" name="custom_full_name" placeholder="Full Name">
+            <input type="email" class="modal2-input" name="custom_email" placeholder="Email">
+            <input type="tel" class="modal2-input" name="custom_contact_number" placeholder="Contact Number">
+          </div>
+        </div>
+
+        <div class="modal2-section">
+          <h3 class="modal2-section-title">Request Details</h3>
+          <textarea class="modal2-textarea" name="description" placeholder="Detailed Description*" required></textarea>
+        </div>
+
+        <div class="modal2-attachments">
+          <label class="modal2-label">Attachments</label>
+          <input type="file" name="attachment" accept="image/*">
+        </div>
+
+        <div class="modal2-confirm">
+          <button type="submit" class="modal2-confirm-btn">Submit Request</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 3: View Request -->
+<div id="viewRequestModal" class="modal">
+  <div class="modal-content p-4 rounded shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5>Request Details</h5>
+      <span class="close-btn" onclick="closeViewModal()">&times;</span>
+    </div>
+    <div class="mb-3">
+      <p><strong>Job No:</strong> <span id="view-id"></span></p>
+      <p><strong>Unit:</strong> <span id="view-unit"></span></p>
+      <p><strong>Date:</strong> <span id="view-date"></span></p>
+      <p><strong>Status:</strong> <span id="view-status"></span></p>
+      <p><strong>Assigned Personnel:</strong> <span id="view-personnel"></span></p>
+      <p><strong>Description:</strong></p>
+      <p id="view-description"></p>
+    </div>
+    <div class="modal-footer" id="modal-footer-actions"></div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById("requestModal");
+  const formModal2 = document.getElementById("formModal2");
+  const backToModal1 = document.getElementById("backToModal1");
+  const formTitle = document.getElementById("formTitle");
+
+  document.getElementById("openModal").onclick = () => modal.style.display = "flex";
+  document.getElementById("closeModal").onclick = () => modal.style.display = "none";
+
+  document.querySelectorAll(".modal-option").forEach(option => {
+  option.addEventListener("click", () => {
+    const unitId = option.getAttribute("data-id");
+    const unitName = option.getAttribute("data-unit");
+
+    formTitle.textContent = unitName + " Request Details";
+    document.getElementById("selectedUnit").value = unitId; // sends the correct ID
+    modal.style.display = "none";
+    formModal2.style.display = "flex";
+  });
+});
+
+  backToModal1.onclick = () => {
+    formModal2.style.display = "none";
+    modal.style.display = "flex";
+  };
+
+  function closeModal2() {
+    formModal2.style.display = "none";
+  }
+
+  function openRequestModal(id, unit, date, status, description, personnel) {
+  // Fill modal content dynamically
+  document.getElementById("view-id").textContent = id;
+  document.getElementById("view-unit").textContent = unit;
+  document.getElementById("view-date").textContent = date;
+  document.getElementById("view-status").textContent = status;
+  document.getElementById("view-description").textContent = description;
+  document.getElementById("view-personnel").textContent = personnel;
+
+  // Dynamically add actions to footer (e.g., Cancel Request button)
+  const footer = document.getElementById("modal-footer-actions");
+  footer.innerHTML = "";
+  if (status === "Pending" || status === "Approved") {
+    let cancelUrl = "{% url 'gso_requests:cancel_request' 0 %}".replace("0", id);
+    footer.innerHTML = `
+      <form method="post" action="${cancelUrl}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-danger">Cancel Request</button>
+      </form>
+    `;
+  }
+
+  // Show the modal
+  document.getElementById("viewRequestModal").style.display = "flex";
+}
+
+function closeViewModal() {
+  document.getElementById("viewRequestModal").style.display = "none";
+}
+
+</script>
+{% endblock %}
